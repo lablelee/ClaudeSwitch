@@ -1,0 +1,18 @@
+# Secrets - never commit
+.claude-profiles.json
+.claude-secrets/
+*.enc
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test temp files
+tests/_test-*

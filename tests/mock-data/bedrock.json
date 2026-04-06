@@ -1,0 +1,25 @@
+{
+  "model": {
+    "display_name": "Claude Sonnet 4.6",
+    "model_id": "us.anthropic.claude-sonnet-4-6"
+  },
+  "version": "1.0.34",
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 78.2,
+    "current_usage": {
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "total_input_tokens": 156400,
+    "total_output_tokens": 22000
+  },
+  "rate_limits": {},
+  "cost": {
+    "total_cost_usd": 1.23,
+    "total_duration_ms": 7200000,
+    "total_lines_added": 310,
+    "total_lines_removed": 95
+  },
+  "exceeds_200k_tokens": false
+}

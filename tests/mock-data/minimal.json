@@ -1,0 +1,12 @@
+{
+  "model": {
+    "display_name": "Claude Haiku 4.5"
+  },
+  "version": "1.0.30",
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 2.1
+  },
+  "rate_limits": {},
+  "cost": {}
+}
