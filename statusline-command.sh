@@ -33,7 +33,7 @@ RS='\033[0m'
 BD='\033[1m'
 
 Col1W=13
-Col2W=30
+Col2W=25
 Sep1=" $(printf '%b' "${Dim}")┊$(printf '%b' "${RS}") "
 
 # --- Helpers ------------------------------------------------------------------
@@ -151,6 +151,12 @@ is_api=0; badge_bg="$BgBlue"; badge_text="PERSONAL"
 model_clean=$(echo "$model" | sed -E 's/^\s*Claude\s+//' | sed -E 's/ *\([0-9]+[kKmM]? *context\)//')
 ctx_label=""
 [ -n "$ctx_size" ] && { [ "${ctx_size%%.*}" -ge 1000000 ] 2>/dev/null && ctx_label="1M" || ctx_label="200k"; }
+
+# Widen col2 when /compact warning is needed
+if [ -n "$used_pct" ]; then
+    ci=$(printf "%.0f" "$used_pct" 2>/dev/null) || ci=0
+    [ "$ci" -ge 70 ] && Col2W=35
+fi
 
 # === LINE 1: col1=badge  col2=model(ctx)  col3=version =======================
 badge_vis=" ${badge_text} "

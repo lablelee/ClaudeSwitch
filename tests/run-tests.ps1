@@ -124,13 +124,102 @@ if ($output -match "session") { Test-Pass "Session shown" } else { Test-Fail "Mi
 if ($output -match "debug") { Test-Fail "Debug placeholder" } else { Test-Pass "No debug placeholder" }
 
 # =============================================================================
+Test-Section "Startup (no interaction - lines 2,3 hidden)"
+# =============================================================================
+$output = Invoke-Statusline (Join-Path $MockDir "startup.json")
+$lines = ($output.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" })
+
+if ($output -match "PERSONAL") { Test-Pass "Badge: PERSONAL" } else { Test-Fail "Missing badge" $output }
+if ($output -match "Opus 4\.6") { Test-Pass "Model: Opus 4.6" } else { Test-Fail "Missing model" $output }
+if ($output -match "1\.0\.34") { Test-Pass "Version shown" } else { Test-Fail "Missing version" $output }
+if ($lines.Count -eq 1) { Test-Pass "Only 1 line on startup (lines 2,3 hidden)" } else { Test-Fail "Expected 1 line, got $($lines.Count)" $output }
+if ($output -match "context") { Test-Fail "Line 2 should be hidden" } else { Test-Pass "No context bar (correct)" }
+if ($output -match "session") { Test-Fail "Line 3 should be hidden" } else { Test-Pass "No session line (correct)" }
+if ($output -match "(?<!\d)5h") { Test-Fail "Line 2 should be hidden" } else { Test-Pass "No 5h rate (correct)" }
+if ($output -match "(?<!\d)7d") { Test-Fail "Line 3 should be hidden" } else { Test-Pass "No 7d rate (correct)" }
+if ($output.Contains([char]0x2193)) { Test-Fail "Line 3 should be hidden" } else { Test-Pass "No token arrows (correct)" }
+if ($output.Contains([char]0x250A)) { Test-Pass "Column separator on line 1" } else { Test-Fail "Missing separator" $output }
+
+# =============================================================================
 Test-Section "Minimal JSON"
 # =============================================================================
 $output = Invoke-Statusline (Join-Path $MockDir "minimal.json")
+$lines = ($output.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" })
 
 if ($output -match "Haiku 4\.5") { Test-Pass "Model: Haiku 4.5" } else { Test-Fail "Missing model" $output }
 if ($output -match "PERSONAL") { Test-Pass "Default badge" } else { Test-Fail "Missing badge" $output }
 if ($output -match "ERROR") { Test-Fail "Error on minimal" $output } else { Test-Pass "No error" }
+if ($lines.Count -eq 3) { Test-Pass "3 lines (has tokens)" } else { Test-Fail "Expected 3, got $($lines.Count)" $output }
+
+# =============================================================================
+Test-Section "Line count validation"
+# =============================================================================
+# Personal: has tokens → 3 lines
+$out = Invoke-Statusline (Join-Path $MockDir "personal.json")
+$lc = ($out.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
+if ($lc -eq 3) { Test-Pass "Personal: 3 lines" } else { Test-Fail "Personal: expected 3, got $lc" $out }
+
+# High context: has tokens → 3 lines
+$out = Invoke-Statusline (Join-Path $MockDir "high-context.json")
+$lc = ($out.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
+if ($lc -eq 3) { Test-Pass "High context: 3 lines" } else { Test-Fail "High context: expected 3, got $lc" $out }
+
+# Bedrock: has tokens → 3 lines
+$out = Invoke-Statusline (Join-Path $MockDir "bedrock.json") @{ CLAUDE_CODE_USE_BEDROCK="1" }
+$lc = ($out.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
+if ($lc -eq 3) { Test-Pass "Bedrock: 3 lines" } else { Test-Fail "Bedrock: expected 3, got $lc" $out }
+
+# Foundry: has tokens → 3 lines
+$out = Invoke-Statusline (Join-Path $MockDir "foundry.json") @{ CLAUDE_CODE_USE_FOUNDRY="1" }
+$lc = ($out.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
+if ($lc -eq 3) { Test-Pass "Foundry: 3 lines" } else { Test-Fail "Foundry: expected 3, got $lc" $out }
+
+# Startup: no tokens → 1 line
+$out = Invoke-Statusline (Join-Path $MockDir "startup.json")
+$lc = ($out.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
+if ($lc -eq 1) { Test-Pass "Startup: 1 line" } else { Test-Fail "Startup: expected 1, got $lc" $out }
+
+# =============================================================================
+Test-Section "Column separator between all 3 columns"
+# =============================================================================
+$output = Invoke-Statusline (Join-Path $MockDir "personal.json")
+$sepChar = [char]0x250A
+$lineNum = 0
+$allOk = $true
+foreach ($line in ($output.Trim() -split "`n" | Where-Object { $_.Trim() -ne "" })) {
+    $lineNum++
+    $sepCount = ($line.ToCharArray() | Where-Object { $_ -eq $sepChar }).Count
+    if ($sepCount -eq 2) { Test-Pass "Line ${lineNum}: 2 separators" } else { Test-Fail "Line ${lineNum}: expected 2, got $sepCount"; $allOk = $false }
+}
+if ($allOk) { Test-Pass "All lines have 3-column layout" }
+
+# Startup line should also have 2 separators
+$out = Invoke-Statusline (Join-Path $MockDir "startup.json")
+$sepCount = ($out.ToCharArray() | Where-Object { $_ -eq $sepChar }).Count
+if ($sepCount -eq 2) { Test-Pass "Startup line: 2 separators" } else { Test-Fail "Startup: expected 2, got $sepCount" }
+
+# =============================================================================
+Test-Section "Dynamic col2 width (wider with /compact)"
+# =============================================================================
+function Get-VisibleLength($str) {
+    ($str -replace "$([char]27)\[[0-9;]*m",'').Length
+}
+
+$outNormal  = Invoke-Statusline (Join-Path $MockDir "personal.json")
+$outHigh    = Invoke-Statusline (Join-Path $MockDir "high-context.json")
+$outBedrock = Invoke-Statusline (Join-Path $MockDir "bedrock.json") @{ CLAUDE_CODE_USE_BEDROCK="1" }
+$outFoundry = Invoke-Statusline (Join-Path $MockDir "foundry.json") @{ CLAUDE_CODE_USE_FOUNDRY="1" }
+
+$lenNormal  = Get-VisibleLength ($outNormal.Trim() -split "`n")[0]
+$lenHigh    = Get-VisibleLength ($outHigh.Trim() -split "`n")[0]
+$lenBedrock = Get-VisibleLength ($outBedrock.Trim() -split "`n")[0]
+$lenFoundry = Get-VisibleLength ($outFoundry.Trim() -split "`n")[0]
+
+if ($lenHigh -gt $lenNormal) { Test-Pass "High context: wider ($lenHigh > $lenNormal)" } else { Test-Fail "High not wider: $lenHigh vs $lenNormal" }
+if ($lenBedrock -gt $lenNormal) { Test-Pass "Bedrock (78%): wider ($lenBedrock > $lenNormal)" } else { Test-Fail "Bedrock not wider: $lenBedrock vs $lenNormal" }
+if ($lenFoundry -eq $lenNormal) { Test-Pass "Foundry (15%): default width ($lenFoundry)" } else { Test-Fail "Foundry unexpected: $lenFoundry vs $lenNormal" }
+if ($outHigh -match "compact now") { Test-Pass "High: compact now" } else { Test-Fail "Missing compact now" }
+if ($outBedrock -match "compact soon") { Test-Pass "Bedrock: compact soon" } else { Test-Fail "Missing compact soon" }
 
 # =============================================================================
 Test-Section "Module import"

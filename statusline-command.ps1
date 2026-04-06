@@ -27,7 +27,7 @@ $RS      = "$e[0m"
 $BD      = "$e[1m"
 
 $Col1W   = 13                  # column 1 width (badge/5h/7d/cost)
-$Col2W   = 30                  # column 2 width (model/context/session)
+$Col2W   = 25                  # column 2 width (model/context/session)
 
 $Sep     = " "
 $Sep1    = " ${Dim}$([char]0x250A)${RS} "   # ┊ dotted vertical
@@ -100,6 +100,12 @@ if ($env:CLAUDE_CODE_USE_BEDROCK -eq "1") {
     $is_api = $true; $badge_bg = $BgAmber; $badge_text = "BEDROCK"
 } elseif ($env:CLAUDE_CODE_USE_FOUNDRY -eq "1") {
     $is_api = $true; $badge_bg = $BgGreen; $badge_text = "FOUNDRY"
+}
+
+# Widen col2 when /compact warning is needed
+if ($used_pct) {
+    $ci = [int][math]::Round([double]$used_pct)
+    if ($ci -ge 70) { $Col2W = 35 }
 }
 
 # === LINE 1: col1=badge  col2=model(ctx)  col3=version ======================

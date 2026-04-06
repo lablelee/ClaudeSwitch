@@ -5,7 +5,9 @@
   "version": "1.0.30",
   "context_window": {
     "context_window_size": 200000,
-    "used_percentage": 2.1
+    "used_percentage": 2.1,
+    "total_input_tokens": 4200,
+    "total_output_tokens": 500
   },
   "rate_limits": {},
   "cost": {}

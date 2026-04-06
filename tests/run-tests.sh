@@ -160,16 +160,127 @@ else
 fi
 
 # =============================================================================
+section "Startup (no interaction yet - lines 2,3 hidden)"
+# =============================================================================
+if [ -n "$PYTHON" ] || command -v jq &>/dev/null; then
+    output=$(run_sl "$MOCK_DIR/startup.json")
+    line_count=$(echo "$output" | wc -l | tr -d ' ')
+
+    echo "$output" | grep -q "PERSONAL" && pass "Badge: PERSONAL" || fail "Missing badge" "$output"
+    echo "$output" | grep -q "Opus 4.6" && pass "Model: Opus 4.6" || fail "Missing model" "$output"
+    echo "$output" | grep -q "1\.0\.34" && pass "Version shown" || fail "Missing version" "$output"
+    [ "$line_count" -eq 1 ] && pass "Only 1 line on startup (lines 2,3 hidden)" || fail "Expected 1 line, got $line_count" "$output"
+    echo "$output" | grep -q "context" && fail "Line 2 should be hidden" || pass "No context bar (correct)"
+    echo "$output" | grep -q "session" && fail "Line 3 should be hidden" || pass "No session line (correct)"
+    echo "$output" | grep -q "5h" && fail "Line 2 should be hidden" || pass "No 5h rate (correct)"
+    echo "$output" | grep -q "7d" && fail "Line 3 should be hidden" || pass "No 7d rate (correct)"
+    echo "$output" | grep -q "↓" && fail "Line 3 should be hidden" || pass "No token arrows (correct)"
+    echo "$output" | grep -q "┊" && pass "Column separator on line 1" || fail "Missing ┊" "$output"
+else
+    skip "No JSON parser"
+fi
+
+# =============================================================================
 section "Minimal JSON (graceful degradation)"
 # =============================================================================
 if [ -n "$PYTHON" ] || command -v jq &>/dev/null; then
     output=$(run_sl "$MOCK_DIR/minimal.json")
     exit_code=$?
+    line_count=$(echo "$output" | wc -l | tr -d ' ')
 
     [ $exit_code -eq 0 ] && pass "Exits cleanly" || fail "Crashed (exit $exit_code)"
     echo "$output" | grep -q "Haiku 4.5" && pass "Model: Haiku 4.5" || fail "Missing model" "$output"
     echo "$output" | grep -q "PERSONAL" && pass "Default badge" || fail "Missing badge" "$output"
     echo "$output" | grep -q "2\.1%" && pass "Context 2.1%" || fail "Missing 2.1%" "$output"
+    [ "$line_count" -eq 3 ] && pass "3 lines (has tokens)" || fail "Expected 3 lines, got $line_count" "$output"
+else
+    skip "No JSON parser"
+fi
+
+# =============================================================================
+section "Line count validation"
+# =============================================================================
+if [ -n "$PYTHON" ] || command -v jq &>/dev/null; then
+    # Personal normal: has tokens → 3 lines
+    out=$(run_sl "$MOCK_DIR/personal.json")
+    lc=$(echo "$out" | wc -l | tr -d ' ')
+    [ "$lc" -eq 3 ] && pass "Personal: 3 lines" || fail "Personal: expected 3, got $lc" "$out"
+
+    # High context: has tokens → 3 lines
+    out=$(run_sl "$MOCK_DIR/high-context.json")
+    lc=$(echo "$out" | wc -l | tr -d ' ')
+    [ "$lc" -eq 3 ] && pass "High context: 3 lines" || fail "High context: expected 3, got $lc" "$out"
+
+    # Bedrock: has tokens → 3 lines
+    out=$(run_sl "$MOCK_DIR/bedrock.json" "CLAUDE_CODE_USE_BEDROCK=1")
+    lc=$(echo "$out" | wc -l | tr -d ' ')
+    [ "$lc" -eq 3 ] && pass "Bedrock: 3 lines" || fail "Bedrock: expected 3, got $lc" "$out"
+
+    # Foundry: has tokens → 3 lines
+    out=$(run_sl "$MOCK_DIR/foundry.json" "CLAUDE_CODE_USE_FOUNDRY=1")
+    lc=$(echo "$out" | wc -l | tr -d ' ')
+    [ "$lc" -eq 3 ] && pass "Foundry: 3 lines" || fail "Foundry: expected 3, got $lc" "$out"
+
+    # Startup: no tokens → 1 line
+    out=$(run_sl "$MOCK_DIR/startup.json")
+    lc=$(echo "$out" | wc -l | tr -d ' ')
+    [ "$lc" -eq 1 ] && pass "Startup: 1 line" || fail "Startup: expected 1, got $lc" "$out"
+else
+    skip "No JSON parser"
+fi
+
+# =============================================================================
+section "Column separator ┊ between all 3 columns"
+# =============================================================================
+if [ -n "$PYTHON" ] || command -v jq &>/dev/null; then
+    output=$(run_sl "$MOCK_DIR/personal.json")
+    # Each of the 3 lines should have exactly 2 ┊ separators (col1|col2, col2|col3)
+    all_ok=1
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+        sep_count=$(echo "$line" | grep -o '┊' | wc -l | tr -d ' ')
+        [ "$sep_count" -eq 2 ] && pass "Line $line_num: 2 separators" || { fail "Line $line_num: expected 2 ┊, got $sep_count"; all_ok=0; }
+    done <<< "$output"
+    [ "$all_ok" -eq 1 ] && pass "All lines have 3-column layout" || fail "Column layout mismatch"
+
+    # Startup: single line should also have 2 separators
+    out=$(run_sl "$MOCK_DIR/startup.json")
+    sep_count=$(echo "$out" | grep -o '┊' | wc -l | tr -d ' ')
+    [ "$sep_count" -eq 2 ] && pass "Startup line: 2 separators" || fail "Startup: expected 2 ┊, got $sep_count"
+else
+    skip "No JSON parser"
+fi
+
+# =============================================================================
+section "Dynamic col2 width (wider with /compact warning)"
+# =============================================================================
+if [ -n "$PYTHON" ] || command -v jq &>/dev/null; then
+    # Normal (42.5%) — default col2 width
+    out_normal=$(run_sl "$MOCK_DIR/personal.json")
+    # High (85.3%) — wider col2
+    out_high=$(run_sl "$MOCK_DIR/high-context.json")
+    # Bedrock (78.2%) — wider col2 (compact soon)
+    out_bedrock=$(run_sl "$MOCK_DIR/bedrock.json" "CLAUDE_CODE_USE_BEDROCK=1")
+    # Foundry (15%) — default col2 width
+    out_foundry=$(run_sl "$MOCK_DIR/foundry.json" "CLAUDE_CODE_USE_FOUNDRY=1")
+
+    # High context & bedrock lines should be wider than normal
+    # Compare line 1 length (visible chars) — strip ANSI, measure
+    strip_ansi() { echo "$1" | sed 's/\x1b\[[0-9;]*m//g'; }
+
+    len_normal=$(strip_ansi "$(echo "$out_normal" | head -1)" | wc -c | tr -d ' ')
+    len_high=$(strip_ansi "$(echo "$out_high" | head -1)" | wc -c | tr -d ' ')
+    len_bedrock=$(strip_ansi "$(echo "$out_bedrock" | head -1)" | wc -c | tr -d ' ')
+    len_foundry=$(strip_ansi "$(echo "$out_foundry" | head -1)" | wc -c | tr -d ' ')
+
+    [ "$len_high" -gt "$len_normal" ] && pass "High context: wider layout ($len_high > $len_normal)" || fail "High context not wider: $len_high vs $len_normal"
+    [ "$len_bedrock" -gt "$len_normal" ] && pass "Bedrock (78%): wider layout ($len_bedrock > $len_normal)" || fail "Bedrock not wider: $len_bedrock vs $len_normal"
+    [ "$len_foundry" -eq "$len_normal" ] && pass "Foundry (15%): default width ($len_foundry)" || fail "Foundry unexpected width: $len_foundry vs $len_normal"
+
+    # Verify compact warning is in the wider outputs
+    echo "$out_high" | grep -q "compact now" && pass "High: compact now in wider col2" || fail "Missing compact now"
+    echo "$out_bedrock" | grep -q "compact soon" && pass "Bedrock: compact soon in wider col2" || fail "Missing compact soon"
 else
     skip "No JSON parser"
 fi
