@@ -165,7 +165,7 @@ c2L1=$(pad_col "$c2L1_ansi" ${#model_raw} $Col2W)
 c3L1=""
 [ -n "$version" ] && c3L1="${Dim}v${RS}${Mint}${version}${RS}"
 
-line1="${c1L1}${Sep1}${c2L1}${c3L1}"
+line1="${c1L1}${Sep1}${c2L1}${Sep1}${c3L1}"
 
 # === LINE 2: col1=5h/cache  col2=context bar  col3=+/- =======================
 
@@ -205,7 +205,7 @@ fi
 # Col 3: +/-
 c3L2="${Green}+${lines_add:-0}${RS}${Dim}/${RS}${Red}-${lines_del:-0}${RS}"
 
-line2="${c1L2}${Sep1}${c2L2}${c3L2}"
+line2="${c1L2}${Sep1}${c2L2}${Sep1}${c3L2}"
 
 # === LINE 3: col1=7d/cost  col2=[compact]session  col3=↓↑ ====================
 
@@ -243,10 +243,17 @@ in_fmt=$(fmt_tokens "${total_in:-0}")
 out_fmt=$(fmt_tokens "${total_out:-0}")
 c3L3="${Teal}↓${RS}${White}${in_fmt}${RS} ${Coral}↑${RS}${White}${out_fmt}${RS}"
 
-line3="${c1L3}${Sep1}${c2L3}${c3L3}"
+line3="${c1L3}${Sep1}${c2L3}${Sep1}${c3L3}"
 
 # --- Output -------------------------------------------------------------------
+# On startup (no interaction yet), only show line 1
+has_interaction=0
+[ "${total_in:-0}" != "0" ] && has_interaction=1
+[ "${total_out:-0}" != "0" ] && has_interaction=1
+
 [ -n "$line1" ] && printf '%b\n' "$line1"
-[ -n "$line2" ] && printf '%b\n' "$line2"
-[ -n "$line3" ] && printf '%b\n' "$line3"
+if [ "$has_interaction" = "1" ]; then
+    [ -n "$line2" ] && printf '%b\n' "$line2"
+    [ -n "$line3" ] && printf '%b\n' "$line3"
+fi
 exit 0

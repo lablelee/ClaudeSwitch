@@ -115,7 +115,7 @@ $c2L1 = Pad-Col $c2L1_ansi $model_raw.Length $Col2W
 $c3L1 = ""
 if ($version) { $c3L1 = "${Dim}v${RS}${Mint}${version}${RS}" }
 
-$line1 = "${c1L1}${Sep1}${c2L1}${c3L1}"
+$line1 = "${c1L1}${Sep1}${c2L1}${Sep1}${c3L1}"
 
 # === LINE 2: col1=5h/cache  col2=context bar  col3=+/- ======================
 
@@ -157,7 +157,7 @@ if ($used_pct) {
 # Col 3: +/-
 $c3L2 = "${Green}+${lines_add}${RS}${Dim}/${RS}${Red}-${lines_del}${RS}"
 
-$line2 = "${c1L2}${Sep1}${c2L2}${c3L2}"
+$line2 = "${c1L2}${Sep1}${c2L2}${Sep1}${c3L2}"
 
 # === LINE 3: col1=7d/cost  col2=[compact]session  col3=↓↑ ===================
 
@@ -203,11 +203,16 @@ $in_fmt = Format-Tokens $total_in
 $out_fmt = Format-Tokens $total_out
 $c3L3 = "${Teal}$([char]0x2193)${RS}${White}${in_fmt}${RS} ${Coral}$([char]0x2191)${RS}${White}${out_fmt}${RS}"
 
-$line3 = "${c1L3}${Sep1}${c2L3}${c3L3}"
+$line3 = "${c1L3}${Sep1}${c2L3}${Sep1}${c3L3}"
 
 # --- Output ------------------------------------------------------------------
+# On startup (no interaction yet), only show line 1
+$has_interaction = ($total_in -ne "0") -or ($total_out -ne "0")
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 if ($line1) { Write-Host $line1 }
-if ($line2) { Write-Host $line2 }
-if ($line3) { Write-Host $line3 }
+if ($has_interaction) {
+    if ($line2) { Write-Host $line2 }
+    if ($line3) { Write-Host $line3 }
+}
 exit 0
