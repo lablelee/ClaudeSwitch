@@ -245,7 +245,8 @@ fi
 c2L3=$(pad_col "$sess_ansi" ${#sess_vis} $Col2W)
 
 # Col 3: ↓in ↑out
-in_fmt=$(fmt_tokens "${total_in:-0}")
+eff_in=$(( ${total_in%%.*} + ${cache_r%%.*} ))
+in_fmt=$(fmt_tokens "$eff_in")
 out_fmt=$(fmt_tokens "${total_out:-0}")
 c3L3="${Teal}↓${RS}${White}${in_fmt}${RS} ${Coral}↑${RS}${White}${out_fmt}${RS}"
 

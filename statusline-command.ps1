@@ -205,7 +205,7 @@ if ($session_dur -and $session_dur -ne "0") {
 $c2L3 = Pad-Col $sess_ansi $sess_visible.Length $Col2W
 
 # Col 3: ↓in ↑out
-$in_fmt = Format-Tokens $total_in
+$in_fmt = Format-Tokens ([double]$total_in + [double]$cache_r)
 $out_fmt = Format-Tokens $total_out
 $c3L3 = "${Teal}$([char]0x2193)${RS}${White}${in_fmt}${RS} ${Coral}$([char]0x2191)${RS}${White}${out_fmt}${RS}"
 
